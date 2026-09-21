@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Institutional Crypto Desk</title>
+  <link rel="stylesheet" href="static/styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <div class="eyebrow">LOCAL QUANT RESEARCH TERMINAL</div>
+        <h1>Institutional Crypto Desk</h1>
+        <p>流動性、衍生品、量化結構與動態風控的本機決策面板</p>
+      </div>
+      <div class="status"><span></span> Local / No API Key</div>
+    </header>
+
+    <section class="panel auto-console">
+      <div class="auto-head">
+        <div>
+          <div class="eyebrow">AUTONOMOUS MARKET SCANNER</div>
+          <h2>自動市場儀表板</h2>
+          <p id="feed-status">等待即時行情...</p>
+        </div>
+        <div class="auto-controls">
+          <label>合約
+            <select id="auto-symbol">
+              <option>BTCUSDT</option><option>ETHUSDT</option><option>SOLUSDT</option>
+              <option>BNBUSDT</option><option>XRPUSDT</option><option>DOGEUSDT</option>
+            </select>
+          </label>
+          <label>週期
+            <select id="auto-interval">
+              <option value="15m">15m</option><option value="1h">1H</option>
+              <option value="4h" selected>4H</option><option value="1d">Daily</option>
+            </select>
+          </label>
+          <label>虛擬資金
+            <input id="auto-account" type="number" value="100000" min="1">
+          </label>
+          <button id="refresh-auto" type="button">立即分析</button>
+        </div>
+      </div>
+      <div class="live-grid">
+        <div class="live-card"><span>LAST PRICE</span><b id="live-price">--</b><small id="live-change">--</small></div>
+        <div class="live-card"><span>AUTO BIAS</span><b id="live-bias">--</b><small id="live-score">--</small></div>
+        <div class="live-card"><span>FUNDING</span><b id="live-funding">--</b><small>Binance USD-M</small></div>
+        <div class="live-card"><span>OI CHANGE</span><b id="live-oi">--</b><small id="live-oi-value">--</small></div>
+        <div class="live-card"><span>RSI / ADX</span><b id="live-rsi-adx">--</b><small id="live-regime">--</small></div>
+        <div class="live-card"><span>ATR / BB</span><b id="live-atr">--</b><small id="live-bb">--</small></div>
+      </div>
+      <p class="feed-foot">每 60 秒自動刷新。清算位置是近期 swing high/low 的流動性代理，不是假裝取得交易所清算熱力圖。</p>
+    </section>
+
+    <main>
+      <details class="manual-wrap">
+        <summary>手動研究模式（可選）</summary>
+      <form id="trade-form" class="panel input-panel">
+        <div class="panel-title"><b>01</b> 交易假設</div>
+        <div class="grid three">
+          <label>標的<input name="asset" value="BTC" required></label>
+          <label>方向<select name="direction">
+            <option value="long">Long</option><option value="short">Short</option>
+            <option value="delta-neutral">Delta-Neutral</option>
+            <option value="observe">觀望</option>
+          </select></label>
+          <label>週期<select name="timeframe">
+            <option>15m</option><option>1H</option><option selected>4H</option><option>Daily</option>
+          </select></label>
+          <label>當前價格<input name="current_price" type="number" step="any" required></label>
+          <label>虛擬資金規模<input name="account_size" type="number" step="any" value="100000"></label>
+          <label>指定無效點位<input name="invalidation_price" type="number" step="any" placeholder="可留空"></label>
+        </div>
+
+        <div class="panel-title"><b>02</b> 宏觀與輪動</div>
+        <div class="grid three">
+          <label>宏觀風險偏好<select name="macro_bias">
+            <option value="neutral">未知／中性</option><option value="risk_on">Risk-On</option>
+            <option value="risk_off">Risk-Off</option>
+          </select></label>
+          <label>板塊資金流<select name="sector_flow">
+            <option value="unknown">未知</option><option value="inflow">流入／吸血</option>
+            <option value="outflow">流出</option>
+          </select></label>
+          <label>BTC 趨勢<select name="btc_trend">
+            <option value="unknown">未知</option><option value="bullish">Bullish</option>
+            <option value="bearish">Bearish</option>
+          </select></label>
+          <label>BTC 相關係數<input name="btc_correlation" type="number" min="-1" max="1" step=".01" placeholder="例如 0.78"></label>
+          <label>Beta<input name="beta" type="number" step=".01" placeholder="例如 1.5"></label>
+        </div>
+        <label>宏觀／新聞<textarea name="macro_news" placeholder="CPI、FOMC、代幣解鎖、ETF 流量、科技股波動..."></textarea></label>
+
+        <div class="panel-title"><b>03</b> 量化與市場結構</div>
+        <div class="grid three">
+          <label>EMA 結構<select name="ema_structure">
+            <option value="unknown">未知</option><option value="bullish">多頭排列</option>
+            <option value="bearish">空頭排列</option><option value="mixed">糾結</option>
+          </select></label>
+          <label>RSI<input name="rsi" type="number" min="0" max="100" step=".1"></label>
+          <label>MACD<select name="macd">
+            <option value="unknown">未知</option><option value="bullish">多頭／金叉</option>
+            <option value="bearish">空頭／死叉</option>
+          </select></label>
+          <label>ADX<input name="adx" type="number" min="0" step=".1"></label>
+          <label>布林帶<select name="bb_state">
+            <option value="unknown">未知</option><option value="squeeze">極度收斂</option>
+            <option value="upper">上軌附近</option><option value="lower">下軌附近</option>
+            <option value="middle">中軌附近</option>
+          </select></label>
+          <label>ATR（價格單位）<input name="atr" type="number" min="0" step="any" placeholder="留空則以 2% 推估"></label>
+        </div>
+
+        <div class="panel-title"><b>04</b> 衍生品與訂單流</div>
+        <div class="grid three">
+          <label>24H 價格變化 %<input name="price_change_24h" type="number" step=".01"></label>
+          <label>資金費率 %<input name="funding_rate" type="number" step=".0001"></label>
+          <label>OI 變化 %<input name="oi_change" type="number" step=".01"></label>
+          <label>CVD<select name="cvd">
+            <option value="unknown">未知</option><option value="bullish">買方主導</option>
+            <option value="bearish">賣方主導</option>
+          </select></label>
+          <label>上方清算池價格<input name="liquidation_above" type="number" step="any"></label>
+          <label>下方清算池價格<input name="liquidation_below" type="number" step="any"></label>
+        </div>
+        <label>其他結構／OB／FVG 備註<textarea name="notes" placeholder="HH/HL、LH/LL、Order Block、FVG、事件 priced-in 判斷..."></textarea></label>
+
+        <button class="analyze" type="submit">RUN INSTITUTIONAL ANALYSIS</button>
+        <p class="fineprint">虛擬資金推演，不構成財務建議。系統不會捏造未輸入的即時市場資料。</p>
+      </form>
+      </details>
+
+      <section id="report" class="panel report-panel empty">
+        <div class="empty-state">
+          <div class="radar"></div>
+          <h2>Awaiting Market Inputs</h2>
+          <p>填入交易假設後，系統才會建立風險受控的執行備忘錄。</p>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="static/auto_engine.js"></script>
+  <script src="static/app.js"></script>
+</body>
+</html>

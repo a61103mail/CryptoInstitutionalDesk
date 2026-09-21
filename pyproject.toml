@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crypto-institutional-desk"
+version = "1.0.0"
+description = "Local institutional-style crypto trade decision dashboard"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = ["Flask>=3.1,<4"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3,<9"]
+
+[project.scripts]
+crypto-desk = "crypto_desk.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+crypto_desk = ["templates/*.html", "static/*.css", "static/*.js"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
