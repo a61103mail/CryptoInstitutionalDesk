@@ -3,6 +3,13 @@ const reportNode = document.querySelector("#report");
 const button = document.querySelector(".analyze");
 const autoButton = document.querySelector("#refresh-auto");
 const feedStatus = document.querySelector("#feed-status");
+const symbolSelect = document.querySelector("#auto-symbol");
+const watchlistNode = document.querySelector("#watchlist-chips");
+const watchlistForm = document.querySelector("#watchlist-form");
+const watchlistInput = document.querySelector("#watchlist-input");
+const WATCHLIST_KEY = "crypto-desk-watchlist-v1";
+const DEFAULT_WATCHLIST = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"];
+let watchlist = loadWatchlist();
 if (location.hostname.endsWith("github.io")) {
   document.querySelector(".manual-wrap")?.remove();
 }
@@ -36,17 +43,64 @@ const timeframeText = timeframe => ({
   "Daily": "日線"
 })[timeframe] || timeframe;
 
+function loadWatchlist() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(WATCHLIST_KEY));
+    return Array.isArray(saved) && saved.length ? [...new Set(saved)] : [...DEFAULT_WATCHLIST];
+  } catch {
+    return [...DEFAULT_WATCHLIST];
+  }
+}
+
+function saveWatchlist() {
+  localStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlist));
+}
+
+function normalizeSymbol(value) {
+  const compact = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!compact) return "";
+  return compact.endsWith("USDT") ? compact : `${compact}USDT`;
+}
+
+function syncSymbolOptions(selected = symbolSelect.value) {
+  symbolSelect.innerHTML = watchlist
+    .map(symbol => `<option${symbol === selected ? " selected" : ""}>${symbol}</option>`)
+    .join("");
+  if (!watchlist.includes(selected)) symbolSelect.value = watchlist[0];
+}
+
+async function renderWatchlist() {
+  watchlistNode.innerHTML = watchlist.map(symbol => `
+    <button type="button" class="watch-chip${symbol === symbolSelect.value ? " active" : ""}" data-symbol="${symbol}">
+      <span>${symbol.replace("USDT", "")}</span><b>讀取中</b>
+      <i data-remove="${symbol}" title="從自選移除">×</i>
+    </button>`).join("");
+  const results = await Promise.allSettled(watchlist.map(symbol => window.AutoDesk.quote(symbol)));
+  results.forEach((result, index) => {
+    const chip = watchlistNode.querySelector(`[data-symbol="${watchlist[index]}"]`);
+    if (!chip) return;
+    const value = result.status === "fulfilled" ? result.value : null;
+    const detail = chip.querySelector("b");
+    if (!value) {
+      detail.textContent = "無資料";
+      detail.className = "neutral";
+      return;
+    }
+    detail.textContent = `${money(value.price)} · ${value.change24h >= 0 ? "+" : ""}${value.change24h.toFixed(2)}%`;
+    detail.className = value.change24h >= 0 ? "positive" : "negative";
+  });
+}
+
 function render(r) {
   const input = r.input;
   const execution = r.execution;
   const risk = r.risk;
-  const signalRows = r.signals.map(s => `
+  const signalRows = r.signals.slice(0, 7).map(s => `
     <div class="signal"><div><b>${s.label}</b><br><small>${s.detail}</small></div>
     <strong class="${tone(s.score)}">${s.score > 0 ? "+" : ""}${s.score.toFixed(2)}</strong></div>`).join("");
   const executionHtml = execution ? `
-    <div class="section"><h3>3. 戰術執行面板</h3>
-      <p><i>虛擬資金推演，不構成財務建議</i></p>
-      <div class="cards">
+    <section class="bird-card execution-card"><h3>戰術執行</h3>
+      <div class="cards compact-cards">
         <div class="card"><span>進場區間</span><b>${execution.entry_zone}</b><small>${execution.entry_style}</small></div>
         <div class="card"><span>硬止損</span><b class="negative">${execution.stop}</b><small>${execution.stop_reason}</small></div>
         <div class="card"><span>風險報酬比</span><b>${execution.rr}:1</b><small>${execution.rr < 2.5 ? "低於門檻，否決" : "通過 1:2.5 門檻"}</small></div>
@@ -54,32 +108,35 @@ function render(r) {
         <div class="card"><span>第二止盈</span><b>${execution.tp2}</b><small>主要流動性目標</small></div>
         <div class="card"><span>第三止盈</span><b>${execution.tp3}</b><small>移動止損管理</small></div>
       </div>
-      <p>真實波動幅度：${execution.atr}${execution.atr_inferred ? "（缺值，以價格 2% 情境推估）" : ""}</p>
-    </div>
-    <div class="section"><h3>部位與風險</h3>
-      <div class="cards">
-        <div class="card"><span>風險預算</span><b>${risk.risk_budget_pct}%</b><small>四分之一凱利公式，硬上限 1%</small></div>
-        <div class="card"><span>名目曝險</span><b>${risk.exposure_pct}%</b><small>${risk.classification}</small></div>
-        <div class="card"><span>95% 風險值情境</span><b>$${money(risk.var95)}</b><small>貝塔係數 ${risk.beta_used}／真實波幅模型</small></div>
-      </div>
-    </div>` : "";
+    </section>` : "";
   reportNode.classList.remove("empty");
   reportNode.innerHTML = `
     <div class="memo-head"><div><div class="eyebrow">📊 機構級交易決策備忘錄</div>
       <h2>${input.asset} · ${timeframeText(input.timeframe)} · ${directionText(input.direction)}</h2>
       <div class="verdict ${r.verdict.toLowerCase()}">${r.verdict_zh}</div></div>
       <div class="probability">模型化勝率估計<b>${r.probability}%</b>完整度 ${r.completeness ?? 100}%</div></div>
-    <div class="section"><h3>1. 執行結論</h3><p>${r.summary}</p>
-      ${r.missing.length ? `<p class="missing">缺失資料：${r.missing.join("、")}</p>` : ""}</div>
-    <div class="section"><h3>2. 多維度拆解</h3>
-      ${r.breakdown ? `<div class="warning"><b>巨鯨與籌碼：</b>${r.breakdown.whale}</div>
-      <div class="warning"><b>量化與結構：</b>${r.breakdown.quant}</div>
-      <div class="warning"><b>宏觀與資金流：</b>${r.breakdown.macro}</div>` : ""}
-      ${signalRows}</div>
-    ${executionHtml}
-    <div class="section"><h3>4. 交易員心理防護</h3>
-      ${r.guardrails.map(g => `<div class="warning">${g}</div>`).join("")}
-    </div><p class="fineprint">${r.disclaimer}</p>`;
+    <div class="bird-grid">
+      <section class="bird-card verdict-card"><h3>決策摘要</h3><p>${r.summary}</p>
+        <div class="risk-strip">
+          <div><span>風險預算</span><b>${risk.risk_budget_pct}%</b></div>
+          <div><span>名目曝險</span><b>${risk.exposure_pct}%</b></div>
+          <div><span>95% 風險值</span><b>$${money(risk.var95)}</b></div>
+        </div>
+        ${r.missing.length ? `<p class="missing">資料缺口：${r.missing.join("、")}</p>` : ""}
+      </section>
+      ${executionHtml}
+      <section class="bird-card signals-card"><h3>共振訊號</h3>${signalRows}</section>
+      <section class="bird-card guard-card"><h3>風險護欄</h3>
+        ${r.guardrails.slice(0, 3).map(g => `<div class="warning">${g}</div>`).join("")}
+      </section>
+    </div>
+    <details class="full-analysis"><summary>展開完整多維度說明</summary>
+      ${r.breakdown ? `<div class="detail-grid"><div><b>巨鯨與籌碼</b><p>${r.breakdown.whale}</p></div>
+      <div><b>量化與結構</b><p>${r.breakdown.quant}</p></div>
+      <div><b>宏觀與資金流</b><p>${r.breakdown.macro}</p></div></div>` : ""}
+      ${r.guardrails.slice(3).map(g => `<div class="warning">${g}</div>`).join("")}
+      <p class="fineprint">${r.disclaimer}</p>
+    </details>`;
 }
 
 function updateLive(report) {
@@ -100,7 +157,7 @@ function updateLive(report) {
 }
 
 async function runAutomatic() {
-  const symbol = document.querySelector("#auto-symbol").value;
+  const symbol = symbolSelect.value;
   const interval = document.querySelector("#auto-interval").value;
   const account = +document.querySelector("#auto-account").value || 100000;
   autoButton.disabled = true;
@@ -109,6 +166,7 @@ async function runAutomatic() {
     const report = await window.AutoDesk.run(symbol, interval, account);
     updateLive(report);
     render(report);
+    renderWatchlist();
     feedStatus.textContent = `${report.market.source} · ${new Date(report.market.fetchedAt).toLocaleString()} · 下次 60 秒自動更新`;
   } catch (error) {
     feedStatus.textContent = `自動資料失敗：${error.message}`;
@@ -141,8 +199,53 @@ form.addEventListener("submit", async event => {
   }
 });
 
+watchlistNode.addEventListener("click", event => {
+  const remove = event.target.closest("[data-remove]");
+  if (remove) {
+    event.stopPropagation();
+    if (watchlist.length <= 1) return;
+    const symbol = remove.dataset.remove;
+    const removedCurrent = symbolSelect.value === symbol;
+    watchlist = watchlist.filter(item => item !== symbol);
+    saveWatchlist();
+    syncSymbolOptions();
+    renderWatchlist();
+    if (removedCurrent) runAutomatic();
+    return;
+  }
+  const chip = event.target.closest("[data-symbol]");
+  if (!chip) return;
+  symbolSelect.value = chip.dataset.symbol;
+  runAutomatic();
+});
+
+watchlistForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  const symbol = normalizeSymbol(watchlistInput.value);
+  if (!symbol || watchlist.includes(symbol)) {
+    watchlistInput.value = "";
+    return;
+  }
+  watchlistInput.disabled = true;
+  try {
+    await window.AutoDesk.quote(symbol);
+    watchlist.push(symbol);
+    saveWatchlist();
+    syncSymbolOptions(symbol);
+    watchlistInput.value = "";
+    await renderWatchlist();
+    runAutomatic();
+  } catch {
+    feedStatus.textContent = `${symbol} 不是可用的幣安 U 本位永續合約。`;
+  } finally {
+    watchlistInput.disabled = false;
+  }
+});
+
+syncSymbolOptions(watchlist[0]);
+renderWatchlist();
 autoButton.addEventListener("click", runAutomatic);
-document.querySelector("#auto-symbol").addEventListener("change", runAutomatic);
+symbolSelect.addEventListener("change", runAutomatic);
 document.querySelector("#auto-interval").addEventListener("change", runAutomatic);
 runAutomatic();
 setInterval(runAutomatic, 60_000);

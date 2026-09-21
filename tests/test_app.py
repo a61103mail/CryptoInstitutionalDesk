@@ -17,3 +17,5 @@ def test_home_renders_form():
     response = create_app().test_client().get("/")
     assert response.status_code == 200
     assert "執行機構級分析".encode("utf-8") in response.data
+    assert b'id="watchlist-chips"' in response.data
+    assert b'id="watchlist-form"' in response.data

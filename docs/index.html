@@ -21,7 +21,6 @@
       <div class="auto-head">
         <div>
           <div class="eyebrow">全自動市場掃描器</div>
-          <h2>自動市場儀表板</h2>
           <p id="feed-status">等待即時行情...</p>
         </div>
         <div class="auto-controls">
@@ -43,6 +42,14 @@
           <button id="refresh-auto" type="button">立即分析</button>
         </div>
       </div>
+      <div class="watchlist-row">
+        <div class="watchlist-title">我的自選</div>
+        <div id="watchlist-chips" class="watchlist-chips"></div>
+        <form id="watchlist-form" class="watchlist-add">
+          <input id="watchlist-input" maxlength="15" placeholder="輸入幣種，例如 ADA">
+          <button type="submit">加入</button>
+        </form>
+      </div>
       <div class="live-grid">
         <div class="live-card"><span>最新價格</span><b id="live-price">--</b><small id="live-change">--</small></div>
         <div class="live-card"><span>自動方向</span><b id="live-bias">--</b><small id="live-score">--</small></div>
@@ -54,7 +61,7 @@
       <p class="feed-foot">每 60 秒自動刷新。清算位置採近期波段高低點作為流動性代理，不是假裝取得交易所清算熱力圖。</p>
     </section>
 
-    <main>
+    <main class="dashboard-main">
       <details class="manual-wrap">
         <summary>手動研究模式（可選）</summary>
       <form id="trade-form" class="panel input-panel">

@@ -260,5 +260,15 @@ window.AutoDesk = (() => {
     return analyze(market, accountSize);
   }
 
-  return { run };
+  async function quote(symbol) {
+    const encoded = encodeURIComponent(symbol.toUpperCase());
+    const ticker = await getJson(`/fapi/v1/ticker/24hr?symbol=${encoded}`);
+    return {
+      symbol: ticker.symbol,
+      price: +ticker.lastPrice,
+      change24h: +ticker.priceChangePercent
+    };
+  }
+
+  return { run, quote };
 })();
