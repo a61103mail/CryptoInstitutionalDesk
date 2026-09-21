@@ -6,7 +6,7 @@ window.AutoDesk = (() => {
     const timer = setTimeout(() => controller.abort(), 12000);
     try {
       const response = await fetch(`${BASE}${path}`, { signal: controller.signal });
-      if (!response.ok) throw new Error(`Binance HTTP ${response.status}`);
+      if (!response.ok) throw new Error(`幣安資料請求失敗（狀態碼 ${response.status}）`);
       return await response.json();
     } finally {
       clearTimeout(timer);
@@ -144,7 +144,7 @@ window.AutoDesk = (() => {
     );
     const swings = candles.slice(-49, -1);
     return {
-      source: "Binance USD-M Futures public API",
+      source: "幣安 U 本位合約公開資料介面",
       fetchedAt: new Date().toISOString(),
       symbol: symbol.toUpperCase(),
       interval,
@@ -177,20 +177,20 @@ window.AutoDesk = (() => {
     };
     const bullishEma = market.ema20 > market.ema50 && market.ema50 > market.ema200;
     const bearishEma = market.ema20 < market.ema50 && market.ema50 < market.ema200;
-    add("EMA 20/50/200", bullishEma ? 1.4 : bearishEma ? -1.4 : 0,
+    add("指數移動平均線 20／50／200", bullishEma ? 1.4 : bearishEma ? -1.4 : 0,
       bullishEma ? "多頭排列" : bearishEma ? "空頭排列" : "均線糾結");
-    add("MACD", market.macdLine > market.macdSignal ? 1 : -1,
+    add("平滑異同移動平均", market.macdLine > market.macdSignal ? 1 : -1,
       market.macdLine > market.macdSignal ? "動能柱偏多" : "動能柱偏空");
-    add("RSI", market.rsi > 72 ? -.7 : market.rsi < 28 ? .7 : market.rsi >= 50 ? .35 : -.35,
-      `RSI ${market.rsi.toFixed(1)}`);
-    add("ADX", market.adx >= 25 ? Math.sign(bias || market.change24h) * .7 : 0,
-      `ADX ${market.adx.toFixed(1)}，${market.adx >= 25 ? "趨勢市" : "震盪市"}`);
-    add("CVD Proxy", market.cvdProxy >= 0 ? .8 : -.8,
+    add("相對強弱指標", market.rsi > 72 ? -.7 : market.rsi < 28 ? .7 : market.rsi >= 50 ? .35 : -.35,
+      `相對強弱數值 ${market.rsi.toFixed(1)}`);
+    add("平均趨向指標", market.adx >= 25 ? Math.sign(bias || market.change24h) * .7 : 0,
+      `趨勢強度 ${market.adx.toFixed(1)}，${market.adx >= 25 ? "趨勢市" : "震盪市"}`);
+    add("累積成交量差代理", market.cvdProxy >= 0 ? .8 : -.8,
       market.cvdProxy >= 0 ? "近 40 根主動量偏買方" : "近 40 根主動量偏賣方", "derivatives");
-    add("OI / Price", Math.sign(market.change24h) * (market.oiChange >= 0 ? .8 : .25),
-      `價格 ${market.change24h.toFixed(2)}%，OI ${market.oiChange.toFixed(2)}%`, "derivatives");
+    add("未平倉量／價格", Math.sign(market.change24h) * (market.oiChange >= 0 ? .8 : .25),
+      `價格 ${market.change24h.toFixed(2)}%，未平倉量 ${market.oiChange.toFixed(2)}%`, "derivatives");
     const crowded = Math.abs(market.fundingRate) >= .05;
-    add("Funding", crowded ? -Math.sign(market.fundingRate) : -Math.sign(market.fundingRate) * .2,
+    add("資金費率", crowded ? -Math.sign(market.fundingRate) : -Math.sign(market.fundingRate) * .2,
       `${market.fundingRate.toFixed(4)}%${crowded ? "，擁擠" : ""}`, "derivatives");
 
     const direction = bias >= 0 ? "long" : "short";
@@ -224,18 +224,18 @@ window.AutoDesk = (() => {
       market,
       input: { asset: market.symbol.replace("USDT", ""), timeframe: market.interval, direction },
       verdict, verdict_zh: verdictZh, probability, score: +bias.toFixed(2), completeness: 91,
-      summary: `${direction === "long" ? "多頭" : "空頭"}自動偏向；EMA、動能、OI、Funding 與訂單流代理合成分數 ${bias.toFixed(2)}。`,
-      missing: ["真實清算熱力圖", "宏觀新聞 priced-in 人工判讀"],
+      summary: `${direction === "long" ? "多頭" : "空頭"}自動偏向；指數均線、動能、未平倉量、資金費率與訂單流代理合成分數 ${bias.toFixed(2)}。`,
+      missing: ["真實清算熱力圖", "宏觀新聞是否提前定價的人工判讀"],
       signals,
       breakdown: {
-        whale: `OI ${market.oiChange.toFixed(2)}%，Funding ${market.fundingRate.toFixed(4)}%；上方 ${format(market.liquidityAbove)}、下方 ${format(market.liquidityBelow)} 為近期 swing 流動性代理。`,
-        quant: `EMA20 ${format(market.ema20)} / EMA50 ${format(market.ema50)} / EMA200 ${format(market.ema200)}；RSI ${market.rsi.toFixed(1)}、ADX ${market.adx.toFixed(1)}、BB ${bbState}。`,
-        macro: `與 BTC 報酬相關性 ${market.correlation.toFixed(2)}、Beta ${market.beta.toFixed(2)}。未接新聞 API，不虛構宏觀事件。`
+        whale: `未平倉量變化 ${market.oiChange.toFixed(2)}%，資金費率 ${market.fundingRate.toFixed(4)}%；上方 ${format(market.liquidityAbove)}、下方 ${format(market.liquidityBelow)} 為近期波段流動性代理。`,
+        quant: `20 期指數移動平均線 ${format(market.ema20)}／50 期 ${format(market.ema50)}／200 期 ${format(market.ema200)}；相對強弱 ${market.rsi.toFixed(1)}、趨勢強度 ${market.adx.toFixed(1)}、布林帶 ${bbState}。`,
+        macro: `與 BTC 報酬相關性 ${market.correlation.toFixed(2)}、貝塔係數 ${market.beta.toFixed(2)}。未接新聞資料介面，不虛構宏觀事件。`
       },
       execution: {
         entry_zone: `${format(entry - market.atr * .15)} – ${format(entry + market.atr * .10)}`,
-        entry_style: market.adx >= 25 ? "分批限價，右側確認加倉" : "只在 ADX/結構確認後進場",
-        stop: format(stop), stop_reason: "穿越 1.1 ATR 並破壞自動方向結構。",
+        entry_style: market.adx >= 25 ? "分批限價，右側確認加倉" : "只在趨勢強度／結構確認後進場",
+        stop: format(stop), stop_reason: "穿越 1.1 倍真實波動幅度並破壞自動方向結構。",
         tp1: format(tp1), tp2: format(tp2), tp3: format(tp3), rr: +rr.toFixed(2),
         atr: format(market.atr), atr_inferred: false
       },
@@ -247,9 +247,9 @@ window.AutoDesk = (() => {
       },
       guardrails: [
         `資料來源：${market.source}；更新時間 ${new Date(market.fetchedAt).toLocaleString()}`,
-        "自動分析不包含新聞語意、鏈上巨鯨地址與真實清算熱力圖，不得把 swing proxy 當成交易所清算數據。",
-        "TP1 達成且形成新 HL/LH 後才推保本；未確認前禁止 FOMO 追價。",
-        `Beta ${market.beta.toFixed(2)}；BTC 急跌時必須按相關性風險縮倉。`
+        "自動分析不包含新聞語意、鏈上巨鯨地址與真實清算熱力圖，不得把波段高低點代理當成交易所清算數據。",
+        "第一止盈達成且形成新的高低點結構後才推保本；未確認前禁止追漲殺跌。",
+        `貝塔係數 ${market.beta.toFixed(2)}；BTC 急跌時必須按相關性風險縮倉。`
       ],
       disclaimer: "虛擬資金推演，不構成財務建議。"
     };

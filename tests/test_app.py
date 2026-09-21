@@ -16,5 +16,4 @@ def test_invalid_request_is_400():
 def test_home_renders_form():
     response = create_app().test_client().get("/")
     assert response.status_code == 200
-    assert b"RUN INSTITUTIONAL ANALYSIS" in response.data
-
+    assert "執行機構級分析".encode("utf-8") in response.data
